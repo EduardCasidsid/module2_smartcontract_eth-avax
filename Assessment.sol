@@ -56,5 +56,50 @@ contract Assessment {
 
         // emit the event
         emit Withdraw(_withdrawAmount);
+
+
+ const executeTransaction = async (transaction) => {
+    try {
+      const receipt = await transaction.wait();
+      console.log("Transaction hash:", receipt.transactionHash);
+      console.log("Gas used:", receipt.gasUsed.toString());
+      console.log("Block number:", receipt.blockNumber);
+      console.log("Confirmations:", receipt.confirmations);
+      getBalance();
+      // Add transaction to history
+      setTransactionHistory([...transactionHistory, receipt]);
+    } catch (error) {
+      console.error("Transaction error:", error);
+    }
+  };
+
+  const deposit = async () => {
+    if (atm) {
+      const tx = await atm.deposit(1000);
+      executeTransaction(tx);
+    }
+  };
+
+  const withdraw = async () => {
+    if (atm) {
+      const tx = await atm.withdraw(500);
+      executeTransaction(tx);
+    }
+  };
+
+  const changeLoanAmount = (percentage) => {
+    const newLoanAmount = balance * (percentage / 100);
+    setLoanAmount(newLoanAmount);
+  };
+
+  const payLoan = () => {
+    if (balance >= loanAmount) {
+      const newBalance = balance - loanAmount;
+      setBalance(newBalance);
+      setPaidLoan(true);
+    } else {
+      console.log("Insufficient funds to pay the loan.");
+    }
+  };
     }
 }
