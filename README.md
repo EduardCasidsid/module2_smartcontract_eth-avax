@@ -9,6 +9,7 @@ Set Loan Amount: Enables users to set the loan amount as a percentage of their c
 Pay Loan: Allows users to pay off their loan if they have sufficient funds.
 Transfer ETH: Enables users to transfer ETH to another Ethereum address.
 # Owner
+
 Casidsid, Eduard A.
 
 # License
