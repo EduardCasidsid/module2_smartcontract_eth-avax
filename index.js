@@ -11,6 +11,8 @@ export default function HomePage() {
   const [interestRate, setInterestRate] = useState(undefined);
   const [loanAmount, setLoanAmount] = useState(0); // Added loan amount state
   const [paidLoan, setPaidLoan] = useState(false); // Added state for paid loan
+  const [recipientAddress, setRecipientAddress] = useState(""); // State for recipient address
+  const [amountToSend, setAmountToSend] = useState(""); // State for amount to send
 
   const contractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3"; // Update with actual address
   const atmABI = atm_abi.abi;
@@ -58,9 +60,13 @@ export default function HomePage() {
 
   const getBalance = async () => {
     if (atm) {
-      const balance = await atm.getBalance();
-      setBalance(balance.toNumber());
-      console.log("Balance fetched: ", balance.toNumber());
+      try {
+        const balance = await atm.getBalance();
+        setBalance(balance.toNumber());
+        console.log("Balance fetched: ", balance.toNumber());
+      } catch (error) {
+        console.error("Error fetching balance:", error);
+      }
     }
   };
 
@@ -81,15 +87,23 @@ export default function HomePage() {
 
   const deposit = async () => {
     if (atm) {
-      const tx = await atm.deposit(1000);
-      executeTransaction(tx);
+      try {
+        const tx = await atm.deposit(1000);
+        executeTransaction(tx);
+      } catch (error) {
+        console.error("Error depositing:", error);
+      }
     }
   };
 
   const withdraw = async () => {
     if (atm) {
-      const tx = await atm.withdraw(500);
-      executeTransaction(tx);
+      try {
+        const tx = await atm.withdraw(500);
+        executeTransaction(tx);
+      } catch (error) {
+        console.error("Error withdrawing:", error);
+      }
     }
   };
 
@@ -107,15 +121,45 @@ export default function HomePage() {
       console.log("Insufficient funds to pay the loan.");
     }
   };
-  
+
+  const handleRecipientChange = (event) => {
+    setRecipientAddress(event.target.value);
+  };
+
+  const handleAmountChange = (event) => {
+    setAmountToSend(event.target.value);
+  };
+
+  const transferETH = async () => {
+    if (!ethers.utils.isAddress(recipientAddress)) {
+      console.error("Invalid recipient address");
+      return;
+    }
+
+    if (isNaN(amountToSend) || Number(amountToSend) <= 0) {
+      console.error("Invalid amount to send");
+      return;
+    }
+
+    try {
+      const signer = ethWallet.getSigner();
+      const tx = await signer.sendTransaction({
+        to: recipientAddress,
+        value: ethers.utils.parseEther(amountToSend),
+      });
+      executeTransaction(tx);
+    } catch (error) {
+      console.error("Error sending ETH:", error);
+    }
+  };
 
   const initUser = () => {
     if (!ethWallet) {
-      return <p>Please install Metamask in order to use this ATM.</p>;
+      return <p>Please install Metamask in order to use this ATM</p>;
     }
 
     if (!account) {
-      return <button onClick={connectAccount}>Please connect your Metamask wallet</button>;
+      return <button onClick={() => connectAccount()}>Please connect your Metamask wallet</button>;
     }
 
     if (balance === undefined) {
@@ -140,6 +184,21 @@ export default function HomePage() {
             <button onClick={payLoan}>Pay Loan</button>
           </div>
         )}
+        <div>
+          <input
+            type="text"
+            value={recipientAddress}
+            onChange={handleRecipientChange}
+            placeholder="Recipient Address"
+          />
+          <input
+            type="text"
+            value={amountToSend}
+            onChange={handleAmountChange}
+            placeholder="Amount to Send"
+          />
+          <button onClick={transferETH}>Transfer ETH</button>
+        </div>
       </div>
     );
   };
@@ -162,5 +221,3 @@ export default function HomePage() {
     </main>
   );
 }
-
-
