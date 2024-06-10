@@ -1,105 +1,58 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.9;
-
-//import "hardhat/console.sol";
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
 
 contract Assessment {
-    address payable public owner;
-    uint256 public balance;
+    address public owner;
+    mapping(address => uint256) public balances;
+    mapping(address => bool) public loanStatus;
+    uint256 public interestRate = 10; // 10%
 
-    event Deposit(uint256 amount);
-    event Withdraw(uint256 amount);
+    event Deposit(address indexed account, uint256 amount);
+    event Withdrawal(address indexed account, uint256 amount);
+    event LoanTaken(address indexed account, uint256 amount);
+    event LoanRepaid(address indexed account, uint256 amount);
 
-    constructor(uint initBalance) payable {
-        owner = payable(msg.sender);
-        balance = initBalance;
+    constructor() {
+        owner = msg.sender;
     }
 
-    function getBalance() public view returns(uint256){
-        return balance;
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only owner can call this function");
+        _;
     }
 
-    function deposit(uint256 _amount) public payable {
-        uint _previousBalance = balance;
-
-        // make sure this is the owner
-        require(msg.sender == owner, "You are not the owner of this account");
-
-        // perform transaction
-        balance += _amount;
-
-        // assert transaction completed successfully
-        assert(balance == _previousBalance + _amount);
-
-        // emit the event
-        emit Deposit(_amount);
+    function deposit() external payable {
+        balances[msg.sender] += msg.value;
+        emit Deposit(msg.sender, msg.value);
     }
 
-    // custom error
-    error InsufficientBalance(uint256 balance, uint256 withdrawAmount);
+    function withdraw(uint256 amount) external {
+        require(balances[msg.sender] >= amount, "Insufficient balance");
+        balances[msg.sender] -= amount;
+        payable(msg.sender).transfer(amount);
+        emit Withdrawal(msg.sender, amount);
+    }
 
-    function withdraw(uint256 _withdrawAmount) public {
-        require(msg.sender == owner, "You are not the owner of this account");
-        uint _previousBalance = balance;
-        if (balance < _withdrawAmount) {
-            revert InsufficientBalance({
-                balance: balance,
-                withdrawAmount: _withdrawAmount
-            });
+    function takeLoan(uint256 amount) external {
+        require(!loanStatus[msg.sender], "You already have a pending loan");
+        require(amount <= balances[msg.sender], "Insufficient balance for loan");
+        uint256 interest = (amount * interestRate) / 100;
+        balances[msg.sender] -= amount + interest;
+        loanStatus[msg.sender] = true;
+        emit LoanTaken(msg.sender, amount);
+    }
+
+    function repayLoan() external payable {
+        require(loanStatus[msg.sender], "No pending loan to repay");
+        uint256 amount = balances[msg.sender];
+        balances[msg.sender] += msg.value;
+        if (msg.value >= amount) {
+            loanStatus[msg.sender] = false;
+            emit LoanRepaid(msg.sender, amount);
         }
-
-        // withdraw the given amount
-        balance -= _withdrawAmount;
-
-        // assert the balance is correct
-        assert(balance == (_previousBalance - _withdrawAmount));
-
-        // emit the event
-        emit Withdraw(_withdrawAmount);
-
-
- const executeTransaction = async (transaction) => {
-    try {
-      const receipt = await transaction.wait();
-      console.log("Transaction hash:", receipt.transactionHash);
-      console.log("Gas used:", receipt.gasUsed.toString());
-      console.log("Block number:", receipt.blockNumber);
-      console.log("Confirmations:", receipt.confirmations);
-      getBalance();
-      // Add transaction to history
-      setTransactionHistory([...transactionHistory, receipt]);
-    } catch (error) {
-      console.error("Transaction error:", error);
     }
-  };
 
-  const deposit = async () => {
-    if (atm) {
-      const tx = await atm.deposit(1000);
-      executeTransaction(tx);
-    }
-  };
-
-  const withdraw = async () => {
-    if (atm) {
-      const tx = await atm.withdraw(500);
-      executeTransaction(tx);
-    }
-  };
-
-  const changeLoanAmount = (percentage) => {
-    const newLoanAmount = balance * (percentage / 100);
-    setLoanAmount(newLoanAmount);
-  };
-
-  const payLoan = () => {
-    if (balance >= loanAmount) {
-      const newBalance = balance - loanAmount;
-      setBalance(newBalance);
-      setPaidLoan(true);
-    } else {
-      console.log("Insufficient funds to pay the loan.");
-    }
-  };
+    function setInterestRate(uint256 rate) external onlyOwner {
+        interestRate = rate;
     }
 }
